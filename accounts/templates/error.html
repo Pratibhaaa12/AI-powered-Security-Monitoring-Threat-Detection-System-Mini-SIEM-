@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <title>Error</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+</head>
+<body>
+  <h1>Error</h1>
+  <p>{{ message }}</p>
+  <a href="{% url 'login' %}">Go back to login</a>
+</body>
+</html>

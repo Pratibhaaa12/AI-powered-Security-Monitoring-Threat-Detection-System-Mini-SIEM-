@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <title>Edit Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.css" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          animation: {
+            'fade-in': 'fadeIn 0.4s ease-out',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: 0, transform: 'translateY(10px)' },
+              '100%': { opacity: 1, transform: 'translateY(0)' },
+            },
+          },
+        },
+      },
+      daisyui: {
+        themes: ["corporate", "light", "dark", "cupcake"],
+      },
+    };
+  </script>
+</head>
+<body class="bg-base-200 min-h-screen">
+  <!-- Navbar -->
+  <div class="navbar bg-base-100 shadow-md px-4">
+    <div class="flex-1 flex items-center gap-3">
+
+    <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo"
+         class="h-7 w-auto object-contain" />
+      <a class="btn btn-ghost text-xl font-extrabold tracking-wide">🏆 Reward Dashboard</a>
+      <a href="{% url 'home' %}" class="btn btn-ghost text-base">Home</a>
+      <a href="{% url 'leaderboard' %}" class="btn btn-ghost text-base">Leaderboard</a>
+      <a href="{% url 'bug-dashboard' %}" class="btn btn-ghost text-base">Bug Counter</a>
+      <a href="/goals/repos/" class="btn btn-ghost text-base">Goals</a>
+      <a href="{% url 'daily_report' %}" class="btn btn-ghost text-base">Daily Report</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-medium">{{ user.username }}</span>
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="avatar">
+          <div class="w-10 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2 cursor-pointer">
+            <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=40" />
+          </div>
+        </div>
+
+        <ul tabindex="0" class="mt-3 z-[1] p-2 shadow-lg menu menu-sm dropdown-content bg-base-100 rounded-box w-48">
+          <li><a href="{% url 'profile' %}">👤 Profile</a></li>
+          <li><button class="text-error" onclick="confirmLogout()">🚪 Logout</button></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Modal -->
+  <dialog id="logoutConfirmModal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirm Logout</h3>
+      <p class="py-4 text-sm text-gray-500">Are you sure you want to logout?</p>
+      <div class="modal-action">
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-error">Logout</button>
+        </form>
+        <button class="btn btn-ghost" onclick="closeLogoutModal()">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+  <!-- Profile Form -->
+  <main class="max-w-3xl mx-auto mt-10 px-4 animate-fade-in">
+    <div class="card bg-base-100 shadow-2xl p-8 border border-base-300 rounded-2xl">
+      <h2 class="text-3xl font-bold text-center text-primary mb-6">Edit Profile</h2>
+      <form method="post" class="space-y-5">
+        {% csrf_token %}
+        <!-- Username -->
+        <div>
+          <label for="username" class="label"><span class="label-text font-medium">Username</span></label>
+          <input type="text" id="username" name="username" value="{{ user.username }}"
+                 class="input input-bordered w-full focus:outline-none focus:ring-2 focus:ring-primary" readonly />
+        </div>
+        <!-- First and Last Name -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="first_name" class="label"><span class="label-text font-medium">First Name</span></label>
+            <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}"
+                   class="input input-bordered w-full" />
+          </div>
+          <div>
+            <label for="last_name" class="label"><span class="label-text font-medium">Last Name</span></label>
+            <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}"
+                   class="input input-bordered w-full" />
+          </div>
+        </div>
+        <!-- Email -->
+        <div>
+          <label for="email" class="label"><span class="label-text font-medium">Email</span></label>
+          <input type="email" id="email" name="email" value="{{ user.email }}"
+                 class="input input-bordered w-full" required />
+        </div>
+        <!-- DOB, Gender, Date of Joining -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label for="dob" class="label">
+              <span class="label-text font-medium">🎂 Date of Birth</span>
+            </label>
+            <input
+              type="date"
+              id="dob"
+              name="dob"
+              value="{{ profile.dob|date:'Y-m-d' }}"
+              class="input input-bordered w-full"
+            />
+          </div>
+
+          <div>
+            <label for="gender" class="label">
+              <span class="label-text font-medium">🚻 Gender</span>
+            </label>
+            <select
+              id="gender"
+              name="gender"
+              class="select select-bordered w-full"
+            >
+              <option value="">Select</option>
+              <option value="male" {% if profile.gender == "male" %}selected{% endif %}>Male</option>
+              <option value="female" {% if profile.gender == "female" %}selected{% endif %}>Female</option>
+              <option value="other" {% if profile.gender == "other" %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="date_of_joining" class="label">
+              <span class="label-text font-medium">📅 Date of Joining</span>
+            </label>
+            <input
+              type="date"
+              id="date_of_joining"
+              name="date_of_joining"
+              value="{{ profile.date_of_joining|date:'Y-m-d' }}"
+              class="input input-bordered w-full"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="bytequest_employee_id" class="label">
+              <span class="label-text font-medium">🏢 ByteQuest Employee ID <span class="text-xs text-gray-500">(optional)</span></span>
+            </label>
+            <input type="text" id="bytequest_employee_id" name="bytequest_employee_id"
+                   value="{{ profile.bytequest_employee_id }}"
+                   class="input input-bordered w-full"
+                   placeholder="e.g. 011BQ1234" />
+          </div>
+          <div>
+            <label for="razorpay_employee_id" class="label">
+              <span class="label-text font-medium">💼 Razorpay Employee ID <span class="text-xs text-gray-500">(optional)</span></span>
+            </label>
+            <input type="text" id="razorpay_employee_id" name="razorpay_employee_id"
+                   value="{{ profile.razorpay_employee_id }}"
+                   class="input input-bordered w-full"
+                   placeholder="e.g. emp_IyU2H7KzXb3WqR" />
+          </div>
+        </div>
+
+        <!-- Collaborator Names -->
+        <div>
+          <label for="github_outside_collaborator_name" class="label">
+            <span class="label-text font-medium">GitHub Outside Collaborators (comma separated)</span>
+          </label>
+          <input type="text" id="github_outside_collaborator_name" name="github_outside_collaborator_name"
+                 value="{{ profile.github_outside_collaborator_name }}"
+                 class="input input-bordered w-full" />
+        </div>
+        <div>
+          <label for="aliases" class="label">
+            <span class="label-text font-medium">Aliases (comma separated)</span>
+          </label>
+          <input type="text" id="aliases" name="aliases"
+                value="{{ user.profile.aliases|join:', ' }}"
+                class="input input-bordered w-full"
+                placeholder="e.g. john123, j.doe@gmail.com" />
+        </div>
+
+        <div>
+          <label for="alias_access_token" class="label">
+            <span class="label-text font-medium">Alias Access Tokens (comma separated)</span>
+          </label>
+          <input type="text" id="alias_access_token" name="alias_access_token"
+                 value="{{ user.profile.alias_access_token|join:', ' }}"
+                 placeholder="e.g. ghp_xxx123, ghp_yyy456"
+                 class="input input-bordered w-full" />
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary w-full mt-6 text-lg font-semibold shadow-md hover:scale-[1.01] transition-transform">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Modal Logic -->
+  <script>
+    function confirmLogout() {
+      document.getElementById('logoutConfirmModal').showModal();
+    }
+
+    function closeLogoutModal() {
+      document.getElementById('logoutConfirmModal').close();
+    }
+  </script>
+</body>
+</html>

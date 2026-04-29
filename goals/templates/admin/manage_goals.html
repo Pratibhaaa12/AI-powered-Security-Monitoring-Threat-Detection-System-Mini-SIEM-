@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>Repo Goals</title>
+    <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            transition: 0.25s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+        }
+
+        .glass-header {
+            background: rgba(230, 230, 230, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .badge-green {
+            background: #4CAF50;
+            color: white;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .badge-gray {
+            background: #D1D5DB;
+            color: #374151;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-gray-200 to-gray-300 min-h-screen">
+
+    <!-- NAVBAR -->
+    <div class="w-full glass-card py-4 px-6 flex items-center justify-between relative shadow-lg">
+
+        <!-- Back Button -->
+        <a href="/admin/" class="flex items-center gap-1 text-gray-700 hover:text-blue-600 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span class="text-sm font-medium">Back</span>
+        </a>
+
+        <!-- Page Title -->
+        <h1 class="text-3xl font-extrabold text-gray-900 absolute left-1/2 transform -translate-x-1/2">
+            Repo Goals
+        </h1>
+        <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo" class="h-7 w-auto object-contain" />
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="px-10 pt-4 pb-10">
+
+        <!-- SEARCH BAR -->
+        <div class="mb-4 flex justify-end">
+            <div class="relative w-72">
+                <span class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    🔍
+                </span>
+                <input id="searchRepo" type="text" placeholder="Search repo..."
+                    class="pl-10 px-4 py-2 w-full rounded-xl shadow focus:ring focus:ring-blue-300 outline-none bg-white">
+            </div>
+        </div>
+
+        <div class="glass-card shadow-xl rounded-2xl p-4">
+
+            <!-- TABLE -->
+            <table class="w-full text-left border-separate border-spacing-y-3">
+                <thead>
+                    <tr class="glass-header text-black-700 font-semibold text-sm">
+                        <th class="px-6 py-3 rounded-l-xl w-20">Sr No</th>
+                        <th class="px-6 py-3 w-40">Organization</th>
+                        <th class="px-6 py-3 w-64">Repo Name</th>
+                        <th class="px-6 py-3 w-40">Goal Status</th>
+                        <th class="px-6 py-3 rounded-r-xl w-32 text-center">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody id="repo-table">
+                    {% for repo in repos %}
+                    <tr class="glass-card rounded-xl">
+                        <td class="px-6 py-3">{{ forloop.counter }}</td>
+
+                        <td class="px-6 py-3 font-semibold text-gray-900">
+                            {{ repo.org_name }}
+                        </td>
+
+                        <td class="px-6 py-3 repo-name font-semibold text-gray-900">
+                            {{ repo.repo_name }}
+                        </td>
+
+                        <!-- GOAL STATUS COLUMN -->
+                        <td class="px-6 py-3">
+                            {% if repo.repo_goals.all %}
+                            <span class="badge-green">Goal Assigned</span>
+                            {% else %}
+                            <span class="badge-gray">No Goal</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- ACTION -->
+                        <td class="px-6 py-3 text-center">
+                            <a href="{% url 'repo_goal_list' repo.id %}"
+                                class="inline-flex items-center justify-center transition" title="Add / Edit Goal">
+                                <div
+                                    class="w-9 h-9 rounded-full bg-gray-200 hover:bg-blue-100 flex items-center justify-center transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        class="w-5 h-5 text-gray-600 hover:text-blue-600 transition">
+                                        <rect x="4" y="4" width="16" height="16" rx="4"></rect>
+                                        <path d="M9 15l6-6"></path>
+                                    </svg>
+                                </div>
+                            </a>
+
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+
+    <script>
+        // SEARCH
+        document.getElementById("searchRepo").addEventListener("keyup", function () {
+            let value = this.value.toLowerCase();
+            document.querySelectorAll("#repo-table tr").forEach(row => {
+                let repoName = row.querySelector(".repo-name").innerText.toLowerCase();
+                row.style.display = repoName.includes(value) ? "" : "none";
+            });
+        });
+    </script>
+
+</body>
+
+</html>

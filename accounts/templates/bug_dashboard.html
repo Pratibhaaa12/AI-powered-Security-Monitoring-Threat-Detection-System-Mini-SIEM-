@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>Bug Dashboard</title>
+    <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.9.0/dist/full.css" rel="stylesheet" />
+    <style>
+        #bugModal::-webkit-scrollbar {
+            display: none;
+        }
+        #bugModal {
+            -ms-overflow-style: none; 
+            scrollbar-width: none;    
+        }
+
+        .modal-box::-webkit-scrollbar {
+            display: none;
+        }
+        .modal-box {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        </style>
+
+</head>
+
+<body class="bg-gray-100 min-h-screen p-0">
+
+    <!-- Navbar -->
+    <div class="navbar bg-base-100 shadow-md border-b border-primary/20 px-4">
+        <div class="flex-1 flex items-center gap-3">
+            <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo" class="h-7 w-auto object-contain" />
+            <a class="btn btn-ghost text-xl font-bold">Reward Dashboard</a>
+            <a href="{% url 'home' %}" class="btn btn-ghost text-base">Home</a>
+            <a href="{% url 'leaderboard' %}" class="btn btn-ghost text-base">Leaderboard</a>
+            <a href="/goals/repos/" class="btn btn-ghost text-base">Goals</a>
+            <a href="{% url 'daily_report' %}" class="btn btn-ghost text-base">Daily Report</a>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-sm font-medium">{{ user.username }}</span>
+            <a href="{% url 'profile' %}">
+                <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=40"
+                    alt="Profile Icon"
+                    class="w-10 h-10 rounded-full ring-2 ring-primary hover:ring-4 transition duration-200" />
+            </a>
+        </div>
+    </div>
+
+    <div class="p-6 flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold">Bug Dashboard</h2>
+
+        <button onclick="document.getElementById('bugModal').showModal()"
+                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+            + Add New Bug
+        </button>
+
+    </div>
+
+        <!-- Add Bug Modal -->
+        <dialog id="bugModal" class="modal">
+            <form method="post" action="{% url 'add_bug' %}" class="modal-box space-y-4">
+                {% csrf_token %}
+                <h3 class="font-bold text-lg">Add Bug</h3>
+                
+                <input type="text" name="title" placeholder="Title"
+                    class="input input-bordered w-full" required>
+                
+                <textarea name="description" rows="4" placeholder="Description"
+                        class="textarea textarea-bordered w-full" required></textarea>
+
+                <label class="font-semibold">Severity:</label>
+                <select name="severity" class="select select-bordered w-full" required>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+                
+                <label class="font-semibold">Status:</label>
+                <select name="status" class="select select-bordered w-full" required>
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                </select>
+                
+                <label class="font-semibold">Repo:</label>
+
+                <input type="hidden" name="repo" id="repoInput" required>
+
+                <div class="relative">
+                    <button type="button"
+                        id="repoDropdownBtn"
+                        class="select select-bordered w-full text-left flex items-center">
+                        -- Select Repo --
+                    </button>
+
+
+                    <div id="repoDropdown"
+                        class="absolute z-50 hidden w-full bg-white border rounded-lg mt-1 shadow-lg">
+
+                        <input
+                            type="text"
+                            id="repoSearchInput"
+                            placeholder="Search repo..."
+                            class="input input-bordered w-full rounded-none border-b"
+                        >
+
+                        <ul class="max-h-52 overflow-y-auto">
+                            {% for repo in repos %}
+                            <li
+                                class="px-4 py-2 cursor-pointer hover:bg-gray-100 repo-option"
+                                data-id="{{ repo.id }}"
+                            >
+                                {{ repo.org_name }}/{{ repo.repo_name }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+
+                <label class="font-semibold">Reported By:</label>
+                <input type="text" value="{{ user.username }}" class="input input-bordered w-full bg-gray-100" disabled>
+                <input type="hidden" name="reported_by" value="{{ user.id }}">
+                
+                <label class="font-semibold">Assigned To:</label>
+                <select name="assigned_to" class="select select-bordered w-full">
+                    <option value="">-- Select User --</option>
+                    {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" onclick="document.getElementById('bugModal').close()" class="btn">Cancel</button>
+                </div>
+            </form>
+        </dialog>
+
+        <!-- Edit Bug Modal -->
+        <dialog id="editBugModal" class="modal">
+            <form id="editBugForm" method="post" class="modal-box space-y-4">
+                {% csrf_token %}
+                <h3 class="font-bold text-lg">Edit Bug</h3>
+
+                <p id="notAllowedMsg"
+                   class="hidden text-red-600 text-sm font-semibold">
+                   You are not allowed to edit this bug
+                </p>
+
+                <input type="text" name="title" id="edit_title" placeholder="Title"
+                    class="input input-bordered w-full" required>
+
+                <textarea name="description" id="edit_description" rows="4" placeholder="Description"
+                        class="textarea textarea-bordered w-full" required></textarea>
+
+                <label class="font-semibold">Severity:</label>
+                <select name="severity" id="edit_severity" class="select select-bordered w-full" required>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+
+                <label class="font-semibold">Status:</label>
+                <select name="status" id="edit_status" class="select select-bordered w-full" required>
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                </select>
+
+                <label class="font-semibold">Repo:</label>
+
+                <input type="hidden" name="repo" id="editRepoInput">
+
+                <div class="relative">
+                    <button type="button"
+                        id="editRepoDropdownBtn"
+                        class="select select-bordered w-full text-left flex items-center">
+                        -- Select Repo --
+                    </button>
+
+                    <div id="editRepoDropdown"
+                        class="absolute z-50 hidden w-full bg-white border rounded-lg mt-1 shadow-lg">
+
+                        <input
+                            type="text"
+                            id="editRepoSearchInput"
+                            placeholder="Search repo..."
+                            class="input input-bordered w-full rounded-none border-b"
+                        >
+
+                        <ul class="max-h-52 overflow-y-auto">
+                            {% for repo in repos %}
+                            <li
+                                class="px-4 py-2 cursor-pointer hover:bg-gray-100 edit-repo-option"
+                                data-id="{{ repo.id }}">
+                                {{ repo.org_name }}/{{ repo.repo_name }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+
+
+                <label class="font-semibold">Assigned To:</label>
+                <select name="assigned_to" id="edit_assigned_to" class="select select-bordered w-full">
+                    <option value="">-- Select User --</option>
+                    {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.username }}</option>
+                    {% endfor %}
+                </select>
+
+                <div class="modal-action">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" id="editCancelBtn" class="btn">Cancel</button>
+                </div>
+            </form>
+        </dialog>
+
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-white shadow rounded-lg p-6 text-center">
+                <h4 class="text-gray-500 font-semibold">Total Bugs</h4>
+                <p class="text-2xl font-bold mt-2">{{ metrics.total }}</p>
+            </div>
+            <div class="bg-yellow-100 shadow rounded-lg p-6 text-center">
+                <h4 class="text-gray-700 font-semibold">Open</h4>
+                <p class="text-2xl font-bold mt-2">{{ metrics.open }}</p>
+            </div>
+            <div class="bg-blue-100 shadow rounded-lg p-6 text-center">
+                <h4 class="text-gray-700 font-semibold">In Progress</h4>
+                <p class="text-2xl font-bold mt-2">{{ metrics.in_progress }}</p>
+            </div>
+            <div class="bg-green-100 shadow rounded-lg p-6 text-center">
+                <h4 class="text-gray-700 font-semibold">Resolved/Closed</h4>
+                <p class="text-2xl font-bold mt-2">{{ metrics.resolved }}</p>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <form method="get" class="flex flex-wrap gap-4 mb-6 items-end">
+            <input type="text" name="q" placeholder="Search..." value="{{ request.GET.q }}"
+                class="border rounded p-2 flex-1">
+            <select name="severity" class="border rounded p-2">
+                <option value="">All Severities</option>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+            </select>
+            <select name="status" class="border rounded p-2">
+                <option value="">All Status</option>
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+            </select>
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Filter</button>
+        </form>
+
+        <!-- Bugs Table -->
+        <div class="overflow-x-auto bg-white shadow rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Sr. No.</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Repo</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Title</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Severity</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Status</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Reported</th>
+                        <th class="px-6 py-3 text-left text-sm font-medium text-gray-500">Comments</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for bug in bugs %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <a href="javascript:void(0)"
+                                class="text-blue-600 hover:underline srno-link"
+                                data-bug-id="{{ bug.id }}"
+                                data-bug-title="{{ bug.title|escapejs }}"
+                                data-bug-desc="{{ bug.description|escapejs }}"
+                                data-bug-severity="{{ bug.severity }}"
+                                data-bug-status="{{ bug.status }}"
+                                data-bug-repo="{{ bug.repo.id|default:'' }}"
+                                data-bug-reported="{{ bug.reported_by.id }}"
+                                {% if bug.assigned_to %}
+                                data-bug-assigned="{{ bug.assigned_to.id }}"
+                                {% else %}
+                                data-bug-assigned=""
+                                {% endif %}>
+                                {{ forloop.counter }}
+                                </a>
+
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if bug.repo %}
+                                {{ bug.repo.org_name }}/{{ bug.repo.repo_name }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+
+                        <td class="px-6 py-4">
+                            <a href="{% url 'bug_detail' bug.id %}" class="text-blue-600 hover:underline">{{ bug.title }}</a>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                        {% if bug.severity == 'Low' %} bg-green-100 text-green-800
+                        {% elif bug.severity == 'Medium' %} bg-yellow-100 text-yellow-800
+                        {% elif bug.severity == 'High' %} bg-orange-100 text-orange-800
+                        {% elif bug.severity == 'Critical' %} bg-red-100 text-red-800 {% endif %}">
+                                {{ bug.severity }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                        {% if bug.status == 'Open' %} bg-yellow-100 text-yellow-800
+                        {% elif bug.status == 'In Progress' %} bg-blue-100 text-blue-800
+                        {% elif bug.status == 'Resolved' %} bg-green-100 text-green-800
+                        {% elif bug.status == 'Closed' %} bg-gray-100 text-gray-800 {% endif %}">
+                                {{ bug.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">{{ bug.date_reported|date:"Y-m-d H:i" }}</td>
+                        <td class="px-6 py-4">
+                            <!-- Show existing comments -->
+                            <div class="mb-2 text-sm text-gray-700 max-h-24 overflow-y-auto">
+                                {% if bug.comments.exists %}
+                                {% for c in bug.comments.all %}
+                                <div class="border-b pb-1 mb-1 text-xs">
+                                    <span class="font-semibold">{{ c.user.username }}</span>: {{ c.text }}
+                                </div>
+                                {% endfor %}
+                                {% else %}
+                                <span class="text-gray-400">No comments yet</span>
+                                {% endif %}
+                            </div>
+
+
+                            <!-- Add comment form -->
+                            <form method="post" action="{% url 'add_comment' bug.id %}" class="flex gap-2 mt-2">
+                                {% csrf_token %}
+                                <input type="text" name="comment" placeholder="Add comment..."
+                                    class="border rounded p-1 flex-1 text-sm">
+                                <button type="submit"
+                                    class="bg-blue-500 text-white px-2 py-1 text-sm rounded hover:bg-blue-600">
+                                    ➤
+                                </button>
+                            </form>
+                        </td>
+
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-gray-500">No bugs found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const editUrlTemplate = "{% url 'edit_bug' 0 %}";
+        const currentUser = "{{ user.id }}";
+        const isStaff = "{{ user.is_staff|yesno:'true,false' }}" === "true";
+
+
+        document.querySelectorAll(".srno-link").forEach(link => {
+            link.addEventListener("click", function() {
+                const id = this.dataset.bugId;
+                const title = this.dataset.bugTitle || "";
+                const desc = this.dataset.bugDesc || "";
+                const severity = this.dataset.bugSeverity || "Low";
+                const status = this.dataset.bugStatus || "Open";
+                const repoId = this.dataset.bugRepo || "";
+                const assigned = this.dataset.bugAssigned || "";
+                const reported = this.dataset.bugReported;
+
+                const allowed = (currentUser == reported || currentUser == assigned || isStaff);
+
+                document.getElementById("edit_title").value = title;
+                document.getElementById("edit_description").value = desc;
+                document.getElementById("edit_severity").value = severity;
+                document.getElementById("edit_status").value = status;
+                document.getElementById("edit_assigned_to").value = assigned;
+
+                const repoInput = document.getElementById("editRepoInput");
+                const repoBtn = document.getElementById("editRepoDropdownBtn");
+
+                repoInput.value = repoId;
+
+                if (repoId) {
+                    document.querySelectorAll(".edit-repo-option").forEach(opt => {
+                        if (opt.dataset.id === repoId) {
+                            repoBtn.textContent = opt.textContent.trim();
+                        }
+                    });
+                } else {
+                    repoBtn.textContent = "-- Select Repo --";
+                }
+
+                const form = document.getElementById("editBugForm");
+                form.action = editUrlTemplate.replace("0", id);
+
+                const msg = document.getElementById("notAllowedMsg");
+                const fields = form.querySelectorAll("input, textarea, select, button");
+
+                if (!allowed) {
+                    msg.classList.remove("hidden");
+                    fields.forEach(f => {
+                        if (f.id !== "editCancelBtn") f.disabled = true;
+                    });
+                } else {
+                    msg.classList.add("hidden");
+                    fields.forEach(f => f.disabled = false);
+                }
+
+                document.getElementById("editBugModal").showModal();
+            });
+        });
+
+        document.getElementById("editCancelBtn").addEventListener("click", () => {
+            document.getElementById("editBugModal").close();
+        });
+
+        const editBtn = document.getElementById("editRepoDropdownBtn");
+        const editDropdown = document.getElementById("editRepoDropdown");
+        const editSearch = document.getElementById("editRepoSearchInput");
+        const editOptions = document.querySelectorAll(".edit-repo-option");
+
+        editBtn.addEventListener("click", () => {
+            editDropdown.classList.toggle("hidden");
+            editSearch.value = "";
+            editOptions.forEach(o => o.style.display = "block");
+            editSearch.focus();
+        });
+
+        editOptions.forEach(opt => {
+            opt.addEventListener("click", () => {
+                editBtn.textContent = opt.textContent;
+                document.getElementById("editRepoInput").value = opt.dataset.id;
+                editDropdown.classList.add("hidden");
+            });
+        });
+
+        editSearch.addEventListener("input", function () {
+            const val = this.value.toLowerCase();
+            editOptions.forEach(o => {
+                o.style.display = o.textContent.toLowerCase().includes(val)
+                    ? "block" : "none";
+            });
+        });
+
+        document.addEventListener("click", function (e) {
+            if (!editBtn.contains(e.target) && !editDropdown.contains(e.target)) {
+                editDropdown.classList.add("hidden");
+            }
+        });
+
+    });
+    const addBtn = document.getElementById("repoDropdownBtn");
+    const addDropdown = document.getElementById("repoDropdown");
+    const addSearch = document.getElementById("repoSearchInput");
+    const addOptions = document.querySelectorAll(".repo-option");
+    const addInput = document.getElementById("repoInput");
+
+    addBtn.addEventListener("click", () => {
+        addDropdown.classList.toggle("hidden");
+        addSearch.value = "";
+        addOptions.forEach(o => o.style.display = "block");
+        addSearch.focus();
+    });
+
+    addOptions.forEach(opt => {
+        opt.addEventListener("click", () => {
+            addBtn.textContent = opt.textContent;
+            addInput.value = opt.dataset.id;
+            addDropdown.classList.add("hidden");
+        });
+    });
+
+    addSearch.addEventListener("input", function () {
+        const val = this.value.toLowerCase();
+        addOptions.forEach(o => {
+            o.style.display = o.textContent.toLowerCase().includes(val)
+                ? "block" : "none";
+        });
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!addBtn.contains(e.target) && !addDropdown.contains(e.target)) {
+            addDropdown.classList.add("hidden");
+        }
+    });
+
+</script>
+
+
+</body>
+</html>

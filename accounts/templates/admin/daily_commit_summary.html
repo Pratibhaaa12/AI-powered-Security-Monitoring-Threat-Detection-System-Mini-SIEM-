@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  {% load static %}
+  <title>{{ title }}</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+  <h1 class="text-2xl font-bold mb-6">{{ title }} ({{ date }})</h1>
+  <table class="min-w-full border border-gray-300 mt-6">
+    <thead>
+      <tr class="bg-gray-200 text-gray-700">
+        <th class="px-4 py-2 text-left">Author</th>
+        <th class="px-4 py-2 text-center">Commits</th>
+        <th class="px-4 py-2 text-center">Lines Changed</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in summary %}
+      <tr class="border-t hover:bg-gray-50">
+        <td class="px-4 py-2">{{ row.author }}</td>
+        <td class="px-4 py-2 text-center">{{ row.commit_count }}</td>
+        <td class="px-4 py-2 text-center">{{ row.lines_changed }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="3" class="px-4 py-2 text-center text-gray-500">No commits found</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <title>{{ repo.repo_name }} - Repo Goal Details</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .glass-card {
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 20px 45px rgba(0,0,0,0.08);
+    }
+
+    .fade-bottom {
+      position: absolute;
+      bottom: 0;
+      height: 60px;
+      width: 100%;
+      background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 95%);
+    }
+  </style>
+</head>
+
+<body class="bg-gray-100">
+
+  <!-- HERO SECTION -->
+  <div class="relative h-32 bg-gradient-to-r from-blue-300 via-blue-200 to-blue-300 shadow-md">
+    <div class="absolute inset-0 flex justify-center items-center">
+      <h1 class="text-4xl font-extrabold text-white drop-shadow-lg tracking-wide">
+        {{repo.org_name}}/{{ repo.repo_name }}
+      </h1>
+    </div>
+    <div class="fade-bottom"></div>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="max-w-4xl mx-auto -mt-10 p-8 glass-card rounded-2xl">
+    <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center tracking-tight">Repository Goal Overview</h2>
+
+    <!-- GOAL INFO -->
+    <div class="bg-white/70 p-5 border rounded-xl shadow-sm space-y-3">
+
+      <div>
+        <span class="font-semibold text-gray-700">Goal:</span>
+        {% if goal %}
+        <p class="text-blue-500 font-bold text-lg mt-1 leading-relaxed">
+          {{ goal }}
+        </p>
+        {% else %}
+        <p class="text-gray-500 mt-1">No goal assigned</p>
+        {% endif %}
+      </div>
+
+      {% if goal_date %}
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-gray-700">Goal Set On:</span>
+        <span class="font-bold text-gray-900">{{ goal_date|date:"M d, Y" }}</span>
+      </div>
+      {% endif %}
+      {% if deadline %}
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-gray-700">Deadline:</span>
+        <span class="font-bold text-black-600">{{ deadline|date:"M d, Y" }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="my-8 border-t border-gray-300"></div>
+
+    <!-- SUMMARY -->
+    <h3 class="text-xl font-semibold mb-5 text-gray-900">6 Month Summary</h3>
+
+    <div class="space-y-5">
+
+      <!-- Commits -->
+      <div class="flex justify-between bg-white/70 p-3 rounded-lg shadow-sm">
+        <span class="font-semibold text-gray-700">Total commits:</span>
+        <span class="font-bold text-gray-900">{{ total_commits }}</span>
+      </div>
+
+      <!-- Files -->
+      <div class="flex justify-between bg-white/70 p-3 rounded-lg shadow-sm">
+        <span class="font-semibold text-gray-700">Files changed:</span>
+        <span class="font-bold text-gray-900">{{ file_changes }}</span>
+      </div>
+
+      <!-- PROGRESS BAR -->
+      <div class="bg-white/70 p-5 rounded-xl shadow-sm">
+        <p class="font-semibold text-gray-700 mb-2">
+          Goal Progress: <span class="font-bold">{% if goal %} {{ ai_progress }}% {% else %} 0% {% endif %}</span>
+        </p>
+
+        {% if ai_summary and goal %}
+        <p class="text-gray-600 italic mb-2">{{ ai_summary }}</p>
+        {% endif %}
+
+        {% if goal %}
+        <div class="relative w-full h-5 bg-gray-200 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-700"
+            style="width: {{ ai_progress }}%">
+          </div>
+        </div>
+        {% else %}
+        <div class="w-full h-5 bg-gray-200 rounded-full"></div>
+        {% endif %}
+      </div>
+      <!-- USERS SECTION -->
+      <h3 class="text-2xl font-semibold mb-5 mt-10 text-gray-900">Users</h3>
+
+      <div class="bg-white/70 p-5 rounded-xl shadow-sm">
+
+        {% for item in user_commit_data %}
+        <div class="flex justify-between p-3 border-b">
+          <span class="font-semibold text-gray-700">{{ item.user.username }}</span>
+          <span class="font-bold text-gray-900">
+            {{ item.commits }} commits
+            {% if item.ai_percent is not None %}
+            ({{ item.ai_percent }}%)
+            {% endif %}
+
+          </span>
+        </div>
+        {% empty %}
+        <p class="text-gray-500">No users found for this repository.</p>
+        {% endfor %}
+
+      </div>
+
+
+      <!-- DEADLINE STATUS -->
+      <div class="mt-6">
+        <p class="font-semibold text-gray-800 text-lg mb-2">Deadline Status:</p>
+
+        {% if ai_goal_status == "on_track" %}
+        <div class="p-4 rounded-lg bg-green-50 border border-green-300 text-green-900 shadow-sm">
+          👍 {{ ai_deadline }}
+        </div>
+
+        {% elif ai_goal_status == "slow" %}
+        <div class="p-4 rounded-lg bg-yellow-50 border border-yellow-300 text-yellow-900 shadow-sm">
+          ⚠️ {{ ai_deadline }}
+        </div>
+
+        {% else %}
+        <div class="p-4 rounded-lg bg-red-50 border border-red-300 text-red-900 shadow-sm">
+          ❌ {{ ai_deadline }}
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    <!-- BACK BUTTON -->
+    <div class="mt-10 text-center">
+      {% if coming_from == "admin" %}
+      <a href="{% url 'repo_goal_list' repo.id %}"
+        class="flex items-center gap-1 justify-center text-gray-700 hover:text-blue-600 transition text-lg font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+          class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      </a>
+      {% else %}
+      <a href="{% url 'goals_repos_list' %}"
+        class="flex items-center gap-1 justify-center text-gray-700 hover:text-blue-600 transition text-lg font-medium">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+          class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      </a>
+      {% endif %}
+
+    </div>
+
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <title>Monthly Leaderboard</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white">
+  <nav class="flex items-center justify-between bg-black shadow-md rounded-xl px-4 py-3 mb-6">
+    <!-- Left: Back Button -->
+    <div class="flex items-center gap-3">
+        <button onclick="window.history.back()" 
+        class="flex items-center gap-1 text-white-700 hover:text-blue-600 transition">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" 
+            stroke-width="2" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        <span class="text-sm font-medium">Back</span>
+        </button>
+    </div>
+    <img src="{% static '011bq_logo_icon.png' %}?v=5" 
+        alt="Logo" 
+        class="h-7 w-auto object-contain" />
+  </nav>
+
+  {% block content %}
+  <div class="min-h-screen flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-5xl border border-white/30 rounded-2xl p-6 shadow-2xl bg-gray-950 text-white">
+      <h2 class="text-4xl font-extrabold text-center mb-8 text-white">
+        🏆 <span class="text-white/80">Monthly Leaderboard</span>
+      </h2>
+      <form method="get" class="flex items-center gap-2">
+          <input 
+              type="month" 
+              name="month_year" 
+              value="{{ month_year }}"
+              class="px-3 py-2 rounded bg-gray-800 text-white border border-gray-600"
+          >
+          <button type="submit" class="px-4 py-2 rounded bg-white/10 hover:bg-white/20">Filter</button>
+          <a href="?" class="px-3 py-2 rounded border border-white/10 hover:bg-white/20">Reset</a>
+      </form>
+
+      <!-- Summary Card -->
+      <div class="bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-400 text-white rounded-xl mb-5 p-6">
+        <div class="text-center text-2xl font-semibold mb-3">📅 {{ month_name }} Summary</div>
+        <div class="flex justify-around">
+          <div class="text-center">
+            <div class="uppercase text-sm tracking-widest">Total Commits</div>
+            <div class="text-3xl font-extrabold">{{ total_commits }}</div>
+          </div>
+          <div class="text-center">
+            <div class="uppercase text-sm tracking-widest">Total File Changes</div>
+            <div class="text-3xl font-extrabold">{{ total_file_changes }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full table-auto border border-white/20 rounded-xl">
+          <thead class="bg-gray-800 text-white uppercase text-xs tracking-wide">
+            <tr>
+              <th class="py-3 px-4 text-left">Rank</th>
+              <th class="py-3 px-4 text-left">User</th>
+              <th class="py-3 px-4 text-left">Commits</th>
+              <th class="py-3 px-4 text-left">Avg Rating</th>
+              <th class="py-3 px-4 text-left">File Changes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in leaderboard %}
+            <tr class="{% if user.is_current_user %}bg-blue-900 text-blue-200 font-semibold{% elif forloop.counter0|divisibleby:2 %}bg-gray-900{% else %}bg-gray-800{% endif %}">
+              <td class="py-3 px-4">
+                {% if user.rank == 1 %}
+                    🏆 
+                {% else %}
+                    #{{ user.rank }}
+                {% endif %}
+              </td>
+              <td class="py-3 px-4">
+                {% if request.user.is_staff %}
+                  <a href="{% url 'home_with_id' user.user_id %}" class="text-blue-400 hover:underline relative z-10">
+                    {{ user.author }}
+                  </a>
+                {% else %}
+                  {{ user.author }}
+                {% endif %}
+              </td>
+
+
+
+              <td class="py-3 px-4">{{ user.total_commits }}</td>
+              <td class="py-3 px-4">{{ user.avg_rating|floatformat:2 }}</td>
+              <td class="py-3 px-4">{{ user.total_file_changes }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="text-center py-4 text-gray-400">No leaderboard data available.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endblock %}
+
+</body>
+</html>

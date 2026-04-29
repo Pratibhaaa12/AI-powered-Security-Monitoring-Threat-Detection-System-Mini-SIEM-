@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8">
+  <title>Register</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.0/dist/full.css" rel="stylesheet" type="text/css" />
+</head>
+<body class="bg-base-200 min-h-screen flex items-center justify-center">
+  <div class="card w-full max-w-md bg-base-100 shadow-lg p-6">
+    <h2 class="text-2xl font-semibold mb-4 text-center">Register</h2>
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="label"><span class="label-text">First Name</span></label>
+        <input type="text" name="first_name" class="input input-bordered w-full" required />
+      </div>
+      <div>
+        <label class="label"><span class="label-text">Last Name</span></label>
+        <input type="text" name="last_name" class="input input-bordered w-full" required />
+      </div>
+      <div>
+        <label class="label"><span class="label-text">Username</span></label>
+        <input type="text" name="username" class="input input-bordered w-full" required />
+      </div>
+      <div>
+        <label class="label"><span class="label-text">Email</span></label>
+        <input type="email" name="email" class="input input-bordered w-full" required />
+      </div>
+      <div>
+        <label class="label"><span class="label-text">Password</span></label>
+        <input type="password" name="password" class="input input-bordered w-full" required />
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Register</button>
+    </form>
+    <p class="mt-4 text-center text-sm">
+      Already have an account? 
+      <a href="{% url 'login' %}" class="link link-primary">Login</a>
+    </p>
+  </div>
+</body>
+</html>

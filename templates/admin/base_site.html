@@ -1,0 +1,7 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+{% endblock %}

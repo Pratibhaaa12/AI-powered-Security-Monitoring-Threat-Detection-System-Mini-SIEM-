@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.9.0/dist/full.css" rel="stylesheet" />
+</head>
+
+<body class="bg-base-200 min-h-screen flex flex-col items-center justify-center px-4">
+  <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="App Logo"
+       style="height: 70px; width: auto; margin-bottom: 18px; display: block;">
+
+  <div class="card w-full max-w-md bg-base-100 shadow-2xl p-8 text-center">
+    <h2 class="text-3xl font-bold text-primary mb-4">Welcome</h2>
+
+    <a href="/login?github=1{% if request.GET.next %}&next={{ request.GET.next|urlencode }}{% endif %}" class="btn btn-outline btn-primary btn-block text-base font-semibold flex items-center justify-center">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+        <path fill-rule="evenodd" clip-rule="evenodd"
+          d="M12 2C6.48 2 2 6.58 2 12.2c0 4.51 2.87 8.33 6.84 9.69.5.09.68-.22.68-.49 
+          0-.24-.01-.88-.01-1.72-2.78.62-3.37-1.36-3.37-1.36-.46-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 
+          1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.85.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.05 
+          0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.29.1-2.69 0 0 .84-.27 2.75 1.05A9.4 9.4 0 0 1 12 6.84a9.4 9.4 0 
+          0 1 2.5.34c1.91-1.32 2.75-1.05 2.75-1.05.55 1.4.2 2.43.1 2.69.64.72 1.03 1.64 1.03 2.76 
+          0 3.92-2.34 4.78-4.57 5.04.36.31.69.93.69 1.87 0 1.35-.01 2.43-.01 2.76 
+          0 .27.18.59.69.49A10.22 10.22 0 0 0 22 12.2C22 6.58 17.52 2 12 2z"/>
+      </svg>
+      Continue with GitHub
+
+    </a>
+    <a href="{% url 'google_login' %}?{% if request.GET.next %}next={{ request.GET.next|urlencode }}{% endif %}"class="btn btn-outline btn-error w-full text-base font-semibold flex items-center justify-center gap-3 mt-3">
+      <img src="https://www.svgrepo.com/show/355037/google.svg"alt="Google"class="w-5 h-5"/>
+      Continue with Google
+    </a>
+  </div>
+</body>
+</html>
+
+
+

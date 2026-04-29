@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>{{ repo.repo_name }} - Goals</title>
+    <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+        }
+        .goal-item {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-br from-gray-200 to-gray-300 min-h-screen">
+
+    <!-- NAV -->
+    <div class="w-full glass-card py-4 px-6 flex items-center justify-between shadow-lg">
+        <a href="{% url 'admin_manage_goals' %}"
+            class="flex items-center gap-1 text-gray-700 hover:text-blue-600 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span class="text-sm font-medium">Back</span>
+        </a>
+
+        <h1 class="text-2xl font-extrabold text-gray-900">{{ repo.repo_name }}</h1>
+
+        <button id="addGoalBtn" class="bg-blue-300 hover:bg-blue-400 text-white px-4 py-2 rounded-xl shadow">
+            ➕ Add Goal
+        </button>
+    </div>
+
+    <div class="p-10">
+
+        <div class="glass-card p-6 rounded-xl shadow-xl">
+
+            <h2 class="text-xl font-bold mb-4">Goals List</h2>
+
+            {% csrf_token %}
+
+            <div id="goalList">
+
+                {% for goal in repo.repo_goals.all %}
+                <div class="goal-item" data-goal-id="{{ goal.id }}" data-text="{{ goal.goal_text }}"
+                    data-deadline="{{ goal.deadline|date:'Y-m-d' }}" data-status="{{ goal.status }}">
+                    <div class="flex gap-4">
+                        <!-- SERIAL NUMBER -->
+                        <span class="font-bold text-gray-700 text-lg">{{ forloop.counter }}.</span>
+
+                        <div>
+                            <p class="font-semibold">{{ goal.goal_text }}</p>
+                            <p class="text-sm text-gray-600">
+                                Deadline: {{ goal.deadline }} |
+                                Status: {{ goal.status }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button class="editGoal bg-green-500 hover:bg-green-600 text-white px-5 py-1 rounded-lg">
+                            Edit
+                        </button>
+
+                        {% if running_goal and goal.id == running_goal.id %}
+                        <a href="{% url 'goal_repo_detail' repo.id %}?from=admin"
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-1 rounded-lg">
+                            View
+                        </a>
+                        {% else %}
+                        <button class="bg-gray-400 text-white px-5 py-1 rounded-lg cursor-not-allowed" disabled>
+                            View
+                        </button>
+                        {% endif %}
+                    </div>
+
+                </div>
+                {% empty %}
+                <p class="text-gray-500 italic">No goals added yet.</p>
+                {% endfor %}
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- POPUP -->
+    <div id="goalModal" class="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center hidden">
+        <div class="glass-card w-96 p-6 rounded-xl shadow-xl">
+
+            <h2 class="text-2xl font-bold mb-3">Add / Edit Goal</h2>
+
+            <input type="hidden" id="goalId">
+
+            <textarea id="goalText" class="w-full border px-3 py-2 rounded-lg mb-4 h-28"
+                placeholder="Enter goal text..."></textarea>
+
+            <label class="font-semibold">Deadline</label>
+            <input id="deadlineInput" type="date" class="w-full border px-3 py-2 rounded-lg mb-4">
+
+            <label class="font-semibold">Status</label>
+            <select id="statusSelect" class="w-full border px-3 py-2 rounded-lg mb-4">
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+            </select>
+
+            <div class="flex justify-between">
+
+                <button id="deleteGoal" class="px-4 py-2 bg-red-600 text-white rounded-lg hidden">
+                    Delete
+                </button>
+
+                <div class="flex gap-3">
+                    <button id="closeModal" class="px-4 py-2 bg-gray-600 text-white rounded-lg">
+                        Cancel
+                    </button>
+                    <button id="saveGoal" class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        Save
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+        const repoId = "{{ repo.id }}";
+
+        // Open modal for NEW
+        document.getElementById("addGoalBtn").onclick = () => {
+            document.getElementById("goalId").value = "";
+            document.getElementById("goalText").value = "";
+            document.getElementById("deadlineInput").value = "";
+            document.getElementById("statusSelect").value = "pending";
+            document.getElementById("deleteGoal").classList.add("hidden");
+            document.getElementById("goalModal").classList.remove("hidden");
+        };
+
+        // Close modal
+        document.getElementById("closeModal").onclick =
+            () => document.getElementById("goalModal").classList.add("hidden");
+
+        // Open modal for EDIT
+        document.querySelectorAll(".editGoal").forEach(btn => {
+            btn.onclick = () => {
+                const item = btn.closest(".goal-item");
+
+                document.getElementById("goalId").value = item.dataset.goalId;
+                document.getElementById("goalText").value = item.dataset.text;
+                document.getElementById("deadlineInput").value = item.dataset.deadline;
+                document.getElementById("statusSelect").value = item.dataset.status;
+
+                document.getElementById("deleteGoal").classList.remove("hidden");
+                document.getElementById("goalModal").classList.remove("hidden");
+            };
+        });
+
+        // SAVE GOAL
+        document.getElementById("saveGoal").onclick = async () => {
+
+            let fd = new FormData();
+            fd.append("csrfmiddlewaretoken", csrf);
+            fd.append("repo_id", repoId);
+            fd.append("goal_id", document.getElementById("goalId").value);
+            fd.append("goal_text", document.getElementById("goalText").value);
+            fd.append("deadline", document.getElementById("deadlineInput").value);
+            fd.append("status", document.getElementById("statusSelect").value);
+
+            await fetch("/admin/goals/adminrepogoalsview/save-goal/", {
+                method: "POST",
+                body: fd
+            });
+
+            location.reload();
+        };
+
+        // DELETE GOAL
+        document.getElementById("deleteGoal").onclick = async () => {
+
+            let fd = new FormData();
+            fd.append("csrfmiddlewaretoken", csrf);
+            fd.append("repo_id", repoId);
+            fd.append("goal_id", document.getElementById("goalId").value);
+
+            await fetch("/admin/goals/adminrepogoalsview/delete-goal/", {
+                method: "POST",
+                body: fd
+            });
+
+            location.reload();
+        };
+    </script>
+
+</body>
+</html>

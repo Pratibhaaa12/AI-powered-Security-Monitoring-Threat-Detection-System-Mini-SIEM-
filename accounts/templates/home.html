@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Reward Dashboard</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.9.0/dist/full.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-base-200 text-base-content">
+  <!-- Navbar -->
+  <div class="navbar bg-base-100 shadow-md border-b border-primary/20 px-4">
+    <div class="flex-1 flex items-center gap-3">
+
+    <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo"
+         class="h-7 w-auto object-contain" />
+
+      <a class="btn btn-ghost text-xl font-bold">Reward Dashboard</a>
+      <a href="{% url 'leaderboard' %}" class="btn btn-ghost text-base">Leaderboard</a>
+      <a href="{% url 'bug-dashboard' %}" class="btn btn-ghost text-base">Bug Counter</a>
+      <a href="/goals/repos/" class="btn btn-ghost text-base">Goals</a>
+      <a href="{% url 'daily_report' %}" class="btn btn-ghost text-base">Daily Report</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-medium">{{ user.username }}</span>
+      <a href="{% url 'profile' %}">
+        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=40" alt="Profile Icon"
+          class="w-10 h-10 rounded-full ring-2 ring-primary hover:ring-4 transition duration-200" />
+      </a>
+    </div>
+  </div>
+
+  <!-- Last Runtime -->
+  <div class="max-w-7xl mx-auto mt-4 px-4 text-right text-sm text-gray-500">
+    <strong>Last Runtime:</strong> {{ last_run_time }}
+  </div>
+
+  <!-- Chart Section -->
+  <section class="max-w-7xl mx-auto mt-10 px-4">
+    <h2 class="text-xl font-bold mb-4">Commits Over Time</h2>
+    <div class="bg-base-100 p-6 rounded-2xl shadow-lg border border-primary/10">
+      <canvas id="commitChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Commit Table Section -->
+  <section class="max-w-7xl mx-auto mt-10 px-4">
+    <h2 class="text-xl font-bold mb-4">Recent Commits</h2>
+
+    <!-- Page Size Control -->
+    <form method="get" class="mb-4 flex flex-wrap gap-2 items-center">
+      <label for="pageSize" class="text-sm">Rows per page:</label>
+      <select name="page_size" id="pageSize" onchange="this.form.submit()" class="select select-bordered select-sm">
+        {% for size in page_sizes %}
+        <option value="{{ size }}" {% if page_size|add:"0" == size|add:"0" %}selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+      <input type="hidden" name="page" value="1" />
+    </form>
+    <!-- Enhanced Table -->
+    <div class="overflow-x-auto bg-base-100 rounded-2xl shadow-xl border border-primary/20">
+      <table class="table table-auto min-w-max text-sm text-base-content">
+        <thead class="bg-primary text-primary-content sticky top-0 z-10">
+          <tr class="text-sm">
+            <th class="px-4 py-3 text-left border-r border-base-200 w-32">Commit Type</th>
+            <th class="px-4 py-3 text-left border-r border-base-200 w-40">Repository</th>
+            <th class="px-4 py-3 text-left border-r border-base-200 w-44">Date</th>
+            <th class="px-4 py-3 text-left border-r border-base-200 w-64">Message</th>
+            <th class="px-4 py-3 text-center border-r border-base-200 w-36">Message Rating</th>
+            <th class="px-4 py-3 text-center border-r border-base-200 w-20">Files</th>
+            <th class="px-4 py-3 text-center border-r border-base-200 w-20">Lines</th>
+            <th class="px-4 py-3 text-center border-r border-base-200 w-24">Rating</th>
+            <th class="px-4 py-3 text-left border-r border-base-200 w-64">Rating Reason</th>
+            <th class="px-4 py-3 text-center border-r border-base-200 w-28">AI Code %</th>
+            <th class="px-4 py-3 text-center w-28">Action</th>
+          </tr>
+        </thead>
+        <tbody class="[&>tr:nth-child(even)]:bg-base-200 [&>tr:nth-child(odd)]:bg-base-100">
+          {% for commit in page_obj %}
+          <tr class="hover:bg-primary/10 transition duration-200">
+            <td class="px-4 py-2 border-r border-base-300 text-center w-32">{{ commit.commit_type }}</td>
+            <td class="px-4 py-2 border-r border-base-300 truncate max-w-xs w-40">
+              <a href="https://api.github.com/orgs/{{ commit.org_name }}/repos" class="link link-primary"
+                target="_blank">{{ commit.repo_name }}</a>
+            </td>
+            <td class="px-4 py-2 border-r border-base-300 w-44">{{ commit.date }}</td>
+            <td class="px-4 py-2 border-r border-base-300 truncate max-w-xs w-64">
+              <a href="https://github.com/{{ commit.org_name }}/{{ commit.repo_name }}/commit/{{ commit.commit_hash }}" target="_blank" class="link link-secondary">
+                {{ commit.message|default:"N/A" }}
+              </a>
+            </td>
+            <td class="px-4 py-2 text-center border-r border-base-300 w-36">
+              <span id="message-rating-value-{{ commit.id }}">
+                {% if commit.message_rating %}
+                  <span class="badge px-2 py-1 bg-[#15803D] text-white rounded-full whitespace-nowrap">Rated: {{ commit.message_rating }}</span>
+                {% else %}
+                <span class="badge px-2 py-1 badge-outline whitespace-nowrap">Not Rated</span>
+                {% endif %}
+              </span>
+            </td>
+            <td class="px-4 py-2 text-center border-r border-base-300 w-20">{{ commit.file_changes }}</td>
+            <td class="px-4 py-2 text-center border-r border-base-300 w-20">{{ commit.line_changes }}</td>
+            <td class="px-4 py-2 text-center border-r border-base-300 w-24">
+              <span id="rating-value-{{ commit.id }}">
+                {% if commit.is_rated %}
+                <span class="badge px-2 py-1 bg-[#15803D] text-white rounded-full whitespace-nowrap">Rated: {{ commit.rating }}</span>
+                {% else %}
+                <span class="badge px-2 py-1 badge-outline whitespace-nowrap">Not Rated</span>
+                {% endif %}
+              </span>
+            </td>
+
+            <td class="align-top p-2 w-64">
+              <div class="max-h-40 overflow-y-scroll whitespace-normal break-words text-sm leading-relaxed text-gray-300 
+                          bg-gray-800 border border-gray-700 rounded-md p-2
+                          [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {{ commit.rating_reason|default:"None" }}
+              </div>
+            </td>
+
+            <td class="px-4 py-2 text-center border-r border-base-300 w-28" id="ai-score-{{ commit.id }}">
+              {% if commit.ai_generated_score != None %}
+              <span class="badge px-2 py-1 bg-[#15803D] text-white rounded-full whitespace-nowrap">{{ commit.ai_generated_score }}%</span>
+              {% else %}
+              <span class="badge px-2 py-1 badge-outline whitespace-nowrap">No Percentage</span>
+              {% endif %}
+            </td>
+
+            <td class="px-4 py-2 text-center w-28">
+              {% if commit.is_merge %}
+              <span class="text-xs text-gray-500">Merge commit</span>
+              {% elif not commit.is_rated %}
+              <button class="btn btn-sm btn-accent rate-button" data-commit-id="{{ commit.id }}">Rate</button>
+              {% endif %}
+            </td>
+
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="11" class="text-center text-gray-500 py-4">No commits found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+
+
+    <!-- Pagination -->
+    <div class="mt-6 flex justify-center gap-2">
+      {% if page_obj.has_previous %}
+      <a href="?page=1&page_size={{ page_size }}" class="btn btn-sm">« First</a>
+      <a href="?page={{ page_obj.previous_page_number }}&page_size={{ page_size }}" class="btn btn-sm">‹ Prev</a>
+      {% endif %}
+      <span class="btn btn-sm btn-disabled">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}&page_size={{ page_size }}" class="btn btn-sm">Next ›</a>
+      <a href="?page={{ page_obj.paginator.num_pages }}&page_size={{ page_size }}" class="btn btn-sm">Last »</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Chart Script -->
+  <script>
+    const baseUrl = "{% url 'commits_data' %}";
+    const targetUserId = "{{ target_user_id|default:request.user.id }}";
+    const url = `${baseUrl}?user_id=${encodeURIComponent(targetUserId)}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const ctx = document.getElementById('commitChart').getContext('2d');
+        if (window.commitChartInstance) {
+          window.commitChartInstance.destroy();
+        }
+        window.commitChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.date),
+            datasets: [{
+              label: 'Commits',
+              data: data.map(d => d.count),
+              borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: context => {
+                    const index = context.dataIndex;
+                    return [`Commits: ${context.raw}`, `By: ${data[index].label}`];
+                  }
+                }
+              }
+            },
+            scales: {
+              x: { title: { display: true, text: 'Date' } },
+              y: { beginAtZero: true, title: { display: true, text: 'Commits' } }
+            }
+          }
+        });
+      });
+  </script>
+
+  <!-- Rating Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".rate-button").forEach(button => {
+        button.addEventListener("click", () => {
+          const commitId = button.dataset.commitId;
+          const ratingSpan = document.getElementById(`rating-value-${commitId}`);
+          const messageRatingSpan = document.getElementById(`message-rating-value-${commitId}`);
+          const aiBadge = document.getElementById(`ai-score-${commitId}`);
+
+          button.disabled = true;
+          button.innerText = "Rating...";
+
+          fetch(`/rate-commit/${commitId}/`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken'),
+              'Content-Type': 'application/json',
+            },
+          })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                ratingSpan.innerHTML = `<span class="badge px-2 py-1 bg-[#15803D] text-white whitespace-nowrap">Rated: ${data.rating}</span>`;
+                messageRatingSpan.innerHTML = `<span class="badge px-2 py-1 bg-[#15803D] text-white whitespace-nowrap">Rated: ${data.message_rating}</span>`;
+
+                if (data.ai_score != null) {
+                  aiBadge.innerHTML = `<span class="badge px-2 py-1 bg-[#15803D] text-white whitespace-nowrap">${data.ai_score}%</span>`;
+                } else {
+                  aiBadge.innerHTML = `<span class="badge px-2 py-1 bg-gray-500 text-white whitespace-nowrap rounded-full">No Percentage</span>`;
+                }
+
+                button.remove();
+              } else {
+                alert("Rating failed: " + data.error);
+                button.innerText = "Rate";
+                button.disabled = false;
+              }
+            })
+            .catch(() => {
+              alert("An error occurred");
+              button.innerText = "Rate";
+              button.disabled = false;
+            });
+        });
+      });
+
+      function getCookie(name) {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+      }
+    });
+  </script>
+</body>
+
+</html>

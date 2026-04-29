@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <title>CRM Integrations</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.9.0/dist/full.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-base-200 text-base-content">
+  <div class="navbar bg-base-100 shadow-md border-b border-primary/20 px-4">
+    <div class="flex-1 flex items-center gap-3">
+      <img src="{% static 'fav-icon.png' %}?v=5" alt="Logo" class="h-7 w-auto object-contain" />
+      <a class="btn btn-ghost text-xl font-bold">Reward Dashboard</a>
+      <a href="{% url 'home' %}" class="btn btn-ghost text-base">Home</a>
+      <a href="{% url 'bug-dashboard' %}" class="btn btn-ghost text-base">Bug Counter</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-medium">{{ user.username }}</span>
+      <a href="{% url 'profile' %}">
+        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=40" alt="Profile Icon"
+          class="w-10 h-10 rounded-full ring-2 ring-primary hover:ring-4 transition duration-200" />
+      </a>
+    </div>
+  </div>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div>
+      <h1 class="text-2xl font-bold">CRM Integrations</h1>
+      <p class="text-sm opacity-80">Configure Dynamics, sync contacts, and run automated alert rules.</p>
+    </div>
+
+    <div id="toast" class="hidden alert"></div>
+
+    <section class="card bg-base-100 shadow border border-base-300">
+      <div class="card-body">
+        <h2 class="card-title">Global Filters</h2>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <div>
+            <label class="label"><span class="label-text">Organization</span></label>
+            <select name="org" class="select select-bordered w-full">
+              <option value="">All Orgs</option>
+              {% for org in org_options %}
+              <option value="{{ org }}" {% if selected_org == org %}selected{% endif %}>{{ org }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label"><span class="label-text">Timezone</span></label>
+            <select name="tz" class="select select-bordered w-full">
+              {% for tz in timezone_options %}
+              <option value="{{ tz }}" {% if selected_tz == tz %}selected{% endif %}>{{ tz }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-outline">Apply Filters</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="card bg-base-100 shadow border border-base-300">
+        <div class="card-body">
+          <p class="text-sm opacity-70">Contacts Synced</p>
+          <p class="text-3xl font-bold">{{ contacts_count }}</p>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow border border-base-300">
+        <div class="card-body">
+          <p class="text-sm opacity-70">Active Rules</p>
+          <p class="text-3xl font-bold">{{ rules|length }}</p>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow border border-base-300">
+        <div class="card-body">
+          <p class="text-sm opacity-70">Connection Status</p>
+          <p class="text-lg font-semibold">
+            {% if connection %}
+              {% if connection.is_token_valid %}Connected{% else %}Configured (Token refresh pending){% endif %}
+            {% else %}
+              Not configured
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow border border-base-300">
+      <div class="card-body">
+        <h2 class="card-title">Lean KPI Board</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div class="p-3 rounded-lg bg-base-200">
+            <p class="text-xs opacity-70">Total Bugs</p>
+            <p class="text-xl font-bold">{{ kpi_data.total_bugs }}</p>
+          </div>
+          <div class="p-3 rounded-lg bg-base-200">
+            <p class="text-xs opacity-70">Open Bugs</p>
+            <p class="text-xl font-bold">{{ kpi_data.open_bugs }}</p>
+          </div>
+          <div class="p-3 rounded-lg bg-base-200">
+            <p class="text-xs opacity-70">Closed/Resolved</p>
+            <p class="text-xl font-bold">{{ kpi_data.closed_bugs }}</p>
+          </div>
+          <div class="p-3 rounded-lg bg-base-200">
+            <p class="text-xs opacity-70">Defect Closure Rate</p>
+            <p class="text-xl font-bold">{{ kpi_data.defect_closure_rate }}%</p>
+          </div>
+          <div class="p-3 rounded-lg bg-base-200">
+            <p class="text-xs opacity-70">Avg Open Bug Age</p>
+            <p class="text-xl font-bold">{{ kpi_data.open_bug_aging_avg }}d</p>
+          </div>
+          <div class="p-3 rounded-lg bg-base-200">
+            <p class="text-xs opacity-70">Avg Commit Rating (7d)</p>
+            <p class="text-xl font-bold">{{ kpi_data.recent_avg_commit_quality }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow border border-base-300">
+      <div class="card-body">
+        <h2 class="card-title">Priority Scorecard (Now / Next)</h2>
+        <p class="text-sm opacity-80">Score = severity impact x age urgency x blocker weight. Higher score means higher delivery priority.</p>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Priority Score</th>
+                <th>Bug</th>
+                <th>Repo</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Age (days)</th>
+                <th>Assignee</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in priority_items %}
+              <tr>
+                <td><span class="badge badge-primary">{{ item.priority_score }}</span></td>
+                <td>{{ item.title }}</td>
+                <td>{{ item.repo_name }}</td>
+                <td>{{ item.severity }}</td>
+                <td>{{ item.status }}</td>
+                <td>{{ item.age_days }}</td>
+                <td>{{ item.assignee }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="7" class="text-center opacity-70">No open items in priority queue.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card bg-base-100 shadow border border-base-300">
+        <div class="card-body">
+          <h2 class="card-title">Dynamics Configuration</h2>
+          <form id="connectionForm" class="space-y-3">
+            {% csrf_token %}
+            <input name="tenant_id" class="input input-bordered w-full" placeholder="Tenant ID" value="{{ connection.tenant_id|default:'' }}" required>
+            <input name="client_id" class="input input-bordered w-full" placeholder="Client ID" value="{{ connection.client_id|default:'' }}" required>
+            <input name="client_secret" class="input input-bordered w-full" placeholder="Client Secret" value="{{ connection.client_secret|default:'' }}" required>
+            <input name="base_url" class="input input-bordered w-full" placeholder="https://<org>.crm.dynamics.com" value="{{ connection.base_url|default:'' }}" required>
+            <input name="scope" class="input input-bordered w-full" placeholder="Optional scope" value="{{ connection.scope|default:'' }}">
+            <button type="submit" class="btn btn-primary">Save Configuration</button>
+          </form>
+          <div class="divider my-2"></div>
+          <form id="syncForm" class="flex gap-2 items-end">
+            {% csrf_token %}
+            <div class="flex-1">
+              <label class="label"><span class="label-text">Sync Limit</span></label>
+              <input name="limit" type="number" min="1" max="1000" value="100" class="input input-bordered w-full">
+            </div>
+            <button type="submit" class="btn btn-accent">Sync Contacts</button>
+          </form>
+          <div class="divider my-2"></div>
+          <form id="enrichForm" class="flex gap-2 items-end">
+            {% csrf_token %}
+            <div class="flex-1">
+              <label class="label"><span class="label-text">Enrichment Limit</span></label>
+              <input name="limit" type="number" min="1" max="1000" value="100" class="input input-bordered w-full">
+            </div>
+            <button type="submit" class="btn btn-info">Enrich Contacts</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow border border-base-300">
+        <div class="card-body">
+          <h2 class="card-title">Alert Rules</h2>
+          <form method="post" action="{% url 'create_alert_rule' %}" class="space-y-3">
+            {% csrf_token %}
+            <input name="name" class="input input-bordered w-full" placeholder="Rule name" required>
+            <select name="rule_type" class="select select-bordered w-full" required>
+              <option value="stale_open_bugs">Stale Open Bugs</option>
+              <option value="low_commit_quality">Low Commit Quality</option>
+            </select>
+            <input type="number" name="threshold_value" min="1" value="3" class="input input-bordered w-full" placeholder="Threshold">
+            <input type="number" name="lookback_hours" min="1" value="24" class="input input-bordered w-full" placeholder="Lookback hours (for commit quality)">
+            <input name="recipients" class="input input-bordered w-full" placeholder="Recipients (comma separated Slack channels)">
+            <button type="submit" class="btn btn-secondary">Create Rule</button>
+          </form>
+          <div class="divider my-2"></div>
+          <button id="runAlertsBtn" class="btn btn-warning">Run Alerts Now</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow border border-base-300">
+      <div class="card-body">
+        <h2 class="card-title">Configured Rules</h2>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Threshold</th>
+                <th>Recipients</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rule in rules %}
+              <tr>
+                <td>{{ rule.name }}</td>
+                <td>{{ rule.get_rule_type_display }}</td>
+                <td>{{ rule.threshold_value }}</td>
+                <td>{{ rule.recipients|join:", "|default:"-" }}</td>
+                <td>{% if rule.is_active %}Active{% else %}Inactive{% endif %}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center opacity-70">No rules yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow border border-base-300">
+      <div class="card-body">
+        <h2 class="card-title">Cross-Functional Workload</h2>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Assignee</th>
+                <th>Open Priority Items</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in assignee_workload_items %}
+              <tr>
+                <td>{{ row.assignee }}</td>
+                <td>{{ row.open_items }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="text-center opacity-70">No assignee workload data.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card bg-base-100 shadow border border-base-300">
+      <div class="card-body">
+        <h2 class="card-title">Recent Alert Events</h2>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Rule</th>
+                <th>Title</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for event in events %}
+              <tr>
+                <td>{{ event.local_created_at|date:"Y-m-d H:i" }} ({{ selected_tz }})</td>
+                <td>{{ event.rule.name|default:"-" }}</td>
+                <td>{{ event.title }}</td>
+                <td>{{ event.status }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center opacity-70">No events yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return "";
+    }
+
+    function showToast(message, isError) {
+      const el = document.getElementById("toast");
+      el.className = `alert ${isError ? "alert-error" : "alert-success"} block`;
+      el.textContent = message;
+      setTimeout(() => {
+        el.className = "hidden alert";
+        el.textContent = "";
+      }, 3500);
+    }
+
+    document.getElementById("connectionForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const response = await fetch("{% url 'save_dynamics_connection' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+        body: formData
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast("Dynamics configuration saved.", false);
+      } else {
+        showToast(data.error || "Failed to save configuration.", true);
+      }
+    });
+
+    document.getElementById("syncForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const response = await fetch("{% url 'sync_dynamics_contacts' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+        body: formData
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast(`Synced ${data.synced_contacts} contacts. Reloading...`, false);
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        showToast(data.error || "Contact sync failed.", true);
+      }
+    });
+
+    document.getElementById("runAlertsBtn").addEventListener("click", async () => {
+      const response = await fetch("{% url 'run_crm_alerts' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") }
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast(`Alerts executed. Events created: ${data.events_created}`, false);
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        showToast(data.error || "Alert execution failed.", true);
+      }
+    });
+
+    document.getElementById("enrichForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const response = await fetch("{% url 'enrich_crm_contacts' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") },
+        body: formData
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        showToast(`Enriched ${data.enriched_contacts} contacts.`, false);
+      } else {
+        showToast(data.error || "Contact enrichment failed.", true);
+      }
+    });
+  </script>
+</body>
+</html>

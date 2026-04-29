@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repo Detail - {{ repo.repo_name }}</title>
+    <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gray-50 font-sans p-6">
+
+    <header class="flex justify-between items-center bg-gray-100 p-3 rounded-lg mb-6 shadow-sm">
+        <!-- Left: Back Button -->
+        <div class="flex items-center gap-3">
+            <button onclick="window.history.back()"
+                class="flex items-center gap-1 text-gray-700 hover:text-blue-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                    stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span class="text-sm font-medium">Back</span>
+            </button>
+        </div>
+
+        <!-- Right: Date Range + Buttons -->
+        <div class="flex items-center gap-3">
+            <input type="date" id="startDate" value="{{ start_date|default:'' }}"
+                class="text-sm p-1.5 border border-gray-300 rounded-lg w-32 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                title="Start Date">
+
+            <span class="text-sm font-medium text-gray-600">to</span>
+
+            <input type="date" id="endDate" value="{{ end_date|default:'' }}"
+                class="text-sm p-1.5 border border-gray-300 rounded-lg w-32 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                title="End Date">
+
+            <!-- All Data Button -->
+            <button id="allDataBtn" class="px-3 py-1 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">
+                All Data
+            </button>
+
+            <!-- Back to Last 30 Days -->
+            <button id="last30Btn" class="px-3 py-1 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
+                Last 30 Days
+            </button>
+            <div class="flex items-center">
+                <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo"
+                    class="h-7 w-auto object-contain opacity-90 hover:opacity-100 transition">
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Title -->
+    <h1 class="text-4xl font-bold text-gray-800 mb-6">REPO PAGE</h1>
+
+    <!-- Summary -->
+    <div class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">{{ repo.repo_name }}</h2>
+        <!-- Use grid with 6 columns -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="bg-blue-100 p-4 rounded-lg text-center shadow-sm">
+                <p class="text-gray-500 uppercase text-sm font-medium">Total Commits</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ repo.commits }}</p>
+            </div>
+            <div class="bg-indigo-100 p-4 rounded-lg text-center shadow-sm">
+                <p class="text-gray-500 uppercase text-sm font-medium">Branches</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ repo.branches|default:"0" }}</p>
+            </div>
+            <div class="bg-green-100 p-4 rounded-lg text-center shadow-sm">
+                <p class="text-gray-500 uppercase text-sm font-medium">Merges</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ repo.merges }}</p>
+            </div>
+            <div class="bg-yellow-100 p-4 rounded-lg text-center shadow-sm">
+                <p class="text-gray-500 uppercase text-sm font-medium">Reverts</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ repo.reverts|default:"0" }}</p>
+            </div>
+            <div class="bg-purple-100 p-4 rounded-lg text-center shadow-sm">
+                <p class="text-gray-500 uppercase text-sm font-medium">Last Commit</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ repo.date }}</p>
+                <p class="text-sm text-gray-600 mt-1">({{ repo.last_commit_ago }})</p>
+            </div>
+            <div class="bg-pink-100 p-4 rounded-lg text-center shadow-sm">
+                <p class="text-gray-500 uppercase text-sm font-medium">First Commit</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1">{{ repo.first_commits|default:"0" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commits Over Time Chart -->
+    <div class="mb-8 bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Commits Over Time</h2>
+        <div class="w-full h-96">
+            <canvas id="commitsOverTimeChart" class="w-full h-full"></canvas>
+        </div>
+    </div>
+    <!-- Commits Per User Chart -->
+    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-200 mt-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Commits Per User</h2>
+        <div class="w-full h-96">
+            <canvas id="commitsPerUserChart" class="w-full h-full"></canvas>
+        </div>
+    </div>
+
+    </div>
+
+    <script>
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+
+        // Update page when dates change
+        startDateInput.addEventListener('change', updateDateRange);
+        endDateInput.addEventListener('change', updateDateRange);
+
+        function updateDateRange() {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            if (startDate && endDate) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('start_date', startDate);
+                url.searchParams.set('end_date', endDate);
+                url.searchParams.delete('all_data');
+                window.location.href = url.toString();
+            }
+        }
+
+        // All Data button
+        document.getElementById("allDataBtn").addEventListener("click", function () {
+            startDateInput.value = "";
+            endDateInput.value = "";
+            window.location.href = "?all_data=1";
+        });
+
+        // Back to Last 30 Days button
+        document.getElementById("last30Btn").addEventListener("click", function () {
+            window.location.href = window.location.pathname;
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('commitsOverTimeChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {{ time_series_labels| safe }},
+            datasets: [{
+                label: 'Commits',
+                data: {{ time_series_data| safe }},
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+                    }]
+                },
+            options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Number of Commits'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false }
+            }
+        }
+            });
+        });
+        // Commits per user chart
+        const ctx2 = document.getElementById('commitsPerUserChart').getContext('2d');
+        const userChart = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: {{ user_labels| safe }},
+        datasets: [{
+            label: 'Commits',
+            data: {{ user_data| safe }},
+            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+            borderColor: '#3b82f6',
+            borderWidth: 1
+                }]
+            },
+        options: {
+            responsive: true,
+                maintainAspectRatio: false,
+                    scales: {
+                y: {
+                    beginAtZero: true,
+                        title: { display: true, text: 'Number of Commits' }
+                },
+                x: {
+                    title: { display: true, text: 'User' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false }
+            }
+        }
+        });
+
+    </script>
+
+</body>
+
+</html>

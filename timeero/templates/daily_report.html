@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Daily Report</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.9.0/dist/full.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .clean-block div {
+      margin-bottom: 6px;
+      line-height: 1.45rem;
+    }
+
+    ::-webkit-scrollbar {
+      height: 0px;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .table-container::-webkit-scrollbar {
+      display: none;
+    }
+
+    td, th {
+      border-right: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    td:last-child, th:last-child {
+      border-right: none;
+    }
+
+    ol.list-decimal > li {
+      color: black !important;
+    }
+
+    .commit-text {
+      color: #e91e63 !important;
+      font-weight: 500;
+    }
+    .commit-text:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body class="bg-base-200 text-base-content">
+
+  <!-- NAVBAR -->
+  <div class="navbar bg-base-100 shadow-md border-b border-primary/20 px-4">
+    <div class="flex-1 flex items-center gap-3">
+      <img src="{% static '011bq_logo_icon.png' %}?v=5" class="h-7" />
+      <span class="text-xl font-bold">Reward Dashboard</span>
+      <a href="{% url 'home' %}" class="btn btn-ghost text-base">Home</a>
+      <a href="{% url 'leaderboard' %}" class="btn btn-ghost text-base">Leaderboard</a>
+      <a href="{% url 'bug-dashboard' %}" class="btn btn-ghost text-base">Bug Counter</a>
+      <a href="/goals/repos/" class="btn btn-ghost text-base">Goals</a>
+      
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="text-sm font-medium">{{ user.username }}</span>
+      <a href="{% url 'profile' %}">
+        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=40"
+          class="w-10 h-10 rounded-full ring-2 ring-primary hover:ring-4 transition duration-200" />
+      </a>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="max-w-7xl mx-auto px-6 mt-12">
+
+    <!-- HEADER -->
+    <div class="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+      <h1 class="text-3xl font-extrabold tracking-tight">
+        Daily Report <span class="text-primary">({{ report_date }})</span>
+      </h1>
+
+      <form method="get" id="userForm" class="flex gap-3 items-center">
+
+        {% if user.is_staff %}
+          <select name="username" class="select select-bordered select-sm" onchange="onUserChange()">
+            <option value="">-- Select User --</option>
+            {% for u in all_users %}
+              <option value="{{ u.username }}" {% if selected_username == u.username %}selected{% endif %}>
+                {{ u.username }}
+              </option>
+            {% endfor %}
+          </select>
+
+        {% endif %}
+
+        <input type="date" name="date" value="{{ report_date_raw }}" class="input input-bordered input-sm" />
+        <button class="btn btn-primary btn-sm shadow-md" onclick="onDateSubmit()">View Report</button>
+      </form>
+
+    </div>
+
+    {% if productivity %}
+    <!-- PRODUCTIVITY SUMMARY -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10">
+      <div class="stat bg-base-100 shadow-md rounded-2xl border border-primary/20">
+        <div class="stat-title text-xs uppercase">Total Commits</div>
+        <div class="stat-value text-primary text-2xl">{{ productivity.total_commits }}</div>
+      </div>
+      <div class="stat bg-base-100 shadow-md rounded-2xl border border-primary/20">
+        <div class="stat-title text-xs uppercase">Lines Changed</div>
+        <div class="stat-value text-secondary text-2xl">{{ productivity.lines_added|default:0 }} / {{ productivity.lines_removed|default:0 }}</div>
+        <div class="stat-desc text-xs">Added / Removed</div>
+      </div>
+      <div class="stat bg-base-100 shadow-md rounded-2xl border border-primary/20">
+        <div class="stat-title text-xs uppercase">Avg Rating</div>
+        <div class="stat-value text-2xl">{{ productivity.avg_rating }}</div>
+        <div class="stat-desc text-xs">Commit quality (1–5)</div>
+      </div>
+      <div class="stat bg-base-100 shadow-md rounded-2xl border border-primary/20">
+        <div class="stat-title text-xs uppercase">Avg Message Rating</div>
+        <div class="stat-value text-2xl">{{ productivity.avg_message_rating }}</div>
+      </div>
+      <div class="stat bg-base-100 shadow-md rounded-2xl border border-primary/20">
+        <div class="stat-title text-xs uppercase">Productivity Score</div>
+        <div class="stat-value text-accent text-2xl">{{ productivity.productivity_score }}</div>
+        {% if productivity.avg_ai_percentage is not None %}
+        <div class="stat-desc text-xs">Avg AI Code: {{ productivity.avg_ai_percentage }}%</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- TABLE CARD -->
+    <div class="bg-base-100 shadow-2xl p-8 rounded-3xl border border-primary/30 overflow-x-auto table-container">
+      <table class="table w-full text-[15px] border-separate border-spacing-x">
+        <thead>
+          <tr class="bg-primary text-primary-content text-base rounded-lg">
+            <th class="px-4 py-4">Task</th>
+            <th class="px-4 py-4">Update</th>
+            <th class="px-4 py-4">Commit</th>
+            <th class="px-4 py-4 text-center">Code Relevance</th>
+            <th class="px-4 py-4">Code Relevance Reason</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for row in report_rows %}
+          <tr class="hover:bg-base-300/50 transition border-b align-top">
+
+            <!-- Tasks -->
+            <td class="px-4 py-5 align-top">
+              <div class="clean-block">{{ row.tasks_block|linebreaksbr }}</div>
+            </td>
+
+            <!-- Updates -->
+            <td class="px-4 py-5 align-top">
+              <div class="clean-block">{{ row.updates_block|linebreaksbr }}</div>
+            </td>
+
+            <!-- Commits -->
+            <td class="px-4 py-5 align-top">
+              <ol class="list-decimal ml-5 space-y-3">
+                {% for c in row.commits_block %}
+                  <li>{{ c|safe }}</li>
+                {% endfor %}
+              </ol>
+            </td>
+
+            <!-- Code Relevance -->
+            <td class="px-4 py-5 text-center">
+              {% if row.percentage %}
+                <span class="badge badge-primary badge-lg font-semibold">
+                  {{ row.percentage }}%
+                </span>
+              {% else %}
+                <span class="badge badge-outline badge-lg font-semibold">N/A</span>
+              {% endif %}
+            </td>
+
+            <!-- Reason -->
+            <td class="px-4 py-5 align-top">
+              {% if row.reason %}
+                <div class="bg-base-200 p-3 rounded-xl border border-gray-300 shadow-sm max-w-xs whitespace-pre-line text-sm">
+                  {{ row.reason }}
+                </div>
+              {% else %}
+                <span class="text-gray-400 text-sm">No reason</span>
+              {% endif %}
+            </td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="pageLoader"
+       class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-[9999]">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+
+  <script>
+    function showLoader() {
+      document.getElementById("pageLoader").classList.remove("hidden");
+    }
+
+    function onUserChange() {
+      showLoader();
+      document.getElementById("userForm").submit();
+    }
+
+    function onDateSubmit() {
+      showLoader();
+      document.getElementById("userForm").submit();
+    }
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Metrics Dashboard</title>
+    <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font from Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+            /* Light background */
+        }
+
+        /* Custom styling for the SVG chart placeholder line */
+        .chart-line {
+            fill: none;
+            stroke: #3b82f6;
+            /* Blue color for the line */
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-8">
+
+    <!-- Header Navbar -->
+    <nav class="flex items-center justify-between bg-white shadow-md rounded-xl px-4 py-3 mb-6">
+        <!-- Left: Back Button -->
+        <div class="flex items-center gap-3">
+            <button onclick="window.history.back()"
+                class="flex items-center gap-1 text-gray-700 hover:text-blue-600 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                    stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span class="text-sm font-medium">Back</span>
+            </button>
+        </div>
+
+        <!-- Right: Date Range Section -->
+        <div class="flex items-center gap-2">
+            <!-- Start Date Input -->
+            <input type="date" id="startDate" value="2024-01-01"
+                class="text-sm p-1.5 border border-gray-300 rounded-lg w-32 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                title="Start Date">
+
+            <!-- Separator 'to' -->
+            <span class="text-sm font-medium text-gray-600">to</span>
+
+            <!-- End Date Input -->
+            <input type="date" id="endDate" value="2024-05-20"
+                class="text-sm p-1.5 border border-gray-300 rounded-lg w-32 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                title="End Date">
+            <div class="flex items-center">
+                <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo"
+                    class="h-7 w-auto object-contain opacity-90 hover:opacity-100 transition">
+            </div>
+        </div>
+    </nav>
+
+    <!-- PROJECT METRICS CARDS -->
+    <div class="mb-10 text-center">
+        <h2 class="text-4xl font-bold text-gray-800 mb-5 border-b-2 border-blue-500 pb-1 inline-block">PROJECT
+            METRICS</h2>
+
+        <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+            <!-- Card 1: Total Repos -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500 transition hover:shadow-xl">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Total Repos</p>
+                <p id="totalReposValue" class="text-5xl font-extrabold text-gray-900"></p>
+            </div>
+
+            <!-- Card 2: Top Repo -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-green-500 transition hover:shadow-xl">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Top Repo Name</p>
+                <p id="topRepoNameValue" class="text-2xl font-bold text-gray-900 truncate mt-2">...</p>
+            </div>
+
+            <!-- Card 3: Top Repo Commits -->
+            <div class="bg-white p-6 rounded-xl shadow-lg border-t-4 border-yellow-500 transition hover:shadow-xl">
+                <p class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Top Repo Commits</p>
+                <p id="topRepoCommitsValue" class="text-5xl font-extrabold text-gray-900">...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- REPO STATS Table -->
+    <div class="mb-10 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <h2 class="text-xl font-semibold text-gray-800 p-6 border-b border-gray-100">REPO STATS</h2>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-l font-medium text-gray-500 uppercase tracking-wider">
+                            NAME</th>
+                        <th class="px-6 py-3 text-left text-l font-medium text-gray-500 uppercase tracking-wider">
+                            COMMITS</th>
+                        <th class="px-6 py-3 text-left text-l font-medium text-gray-500 uppercase tracking-wider">
+                            CHANGES</th>
+                        <th class="px-6 py-3 text-left text-l font-medium text-gray-500 uppercase tracking-wider">
+                            MERGES</th>
+                        <th class="px-6 py-3 text-left text-l font-medium text-gray-500 uppercase tracking-wider">
+                            USER DETAIL</th>
+                    </tr>
+                </thead>
+                <tbody id="repoStatsTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Dynamic rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- REPO COUNT Chart -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100">
+        <h2 class="text-xl font-semibold text-gray-800 p-6 border-b border-gray-100">Repositories with Commits Over Time</h2>
+
+        <div class="p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                <div class="flex space-x-2 text-sm font-medium">
+                    <span class="px-3 py-1 rounded-full bg-blue-500 text-white cursor-pointer shadow-md time-filter"
+                        data-period="day">DAY</span>
+                    <span
+                        class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer time-filter"
+                        data-period="week">WEEK</span>
+                    <span
+                        class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer time-filter"
+                        data-period="month">MONTH</span>
+
+                </div>
+            </div>
+
+            <div class="w-full h-64 mt-4">
+                <canvas id="repoCountChart"></canvas>
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        </div>
+    </div>
+    <!-- REPOSITORIES GROWTH CHART -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 mt-8">
+        <h2 class="text-xl font-semibold text-gray-800 p-6 border-b border-gray-100">
+            Repositories Growth Over Time
+        </h2>
+
+        <div class="p-6">
+            <div class="w-full h-64">
+                <canvas id="repoGrowthChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+
+            // --- Set default date range: last 30 days ---
+            const endDateInput = document.getElementById('endDate');
+            const startDateInput = document.getElementById('startDate');
+            const filterButtons = document.querySelectorAll('.time-filter');
+            const today = new Date();
+            const priorDate = new Date();
+            priorDate.setDate(today.getDate() - 30);
+            const formatDate = (d) => d.toISOString().split('T')[0];
+            endDateInput.value = formatDate(today);
+            startDateInput.value = formatDate(priorDate);
+
+            // --- Function to fetch project metrics ---
+            let repoCountChart = null;
+            let repoGrowthChart = null;
+            let currentPeriod = 'day';
+
+            // Set active filter UI
+            function setActivePeriod(period) {
+                currentPeriod = period;
+                filterButtons.forEach(btn => {
+                    if (btn.dataset.period === period) {
+                        btn.classList.add('bg-blue-500', 'text-white');
+                        btn.classList.remove('bg-gray-100', 'text-gray-600');
+                    } else {
+                        btn.classList.remove('bg-blue-500', 'text-white');
+                        btn.classList.add('bg-gray-100', 'text-gray-600');
+                    }
+                });
+            }
+
+            async function fetchProjectMetrics(startDate, endDate, period = currentPeriod) {
+                try {
+                    const url = `/project-metrics/?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}&period=${encodeURIComponent(period)}`;
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    return data;
+                } catch (err) {
+                    console.error('Failed to fetch project metrics:', err);
+                    return null;
+                }
+            }
+
+            // --- Function to render summary cards ---
+            function renderSummaryCards(data) {
+                document.getElementById('totalReposValue').textContent = data.total_repos;
+                document.getElementById('topRepoNameValue').textContent = data.top_repo_name;
+                document.getElementById('topRepoCommitsValue').textContent = data.top_repo_commits;
+            }
+
+            // --- Function to render table ---
+            function renderTable(data) {
+                const tableBody = document.getElementById('repoStatsTableBody');
+                tableBody.innerHTML = '';
+
+                const colorMap = {
+                    blue: 'bg-blue-500',
+                    red: 'bg-red-500',
+                    green: 'bg-green-500',
+                    yellow: 'bg-yellow-500',
+                    pink: 'bg-pink-500',
+                    indigo: 'bg-indigo-500',
+                };
+
+                data.repos.forEach(repo => {
+                    const changes = `<span class="text-green-600">+${repo.additions}</span> / <span class="text-red-600">-${repo.deletions}</span>`;
+
+                    const userHtml = repo.users.map(u => `
+                        <a href="${u.user_id ? '/home/' + u.user_id + '/' : '#'}"
+                        class="h-8 w-8 rounded-full ${colorMap[u.color] || 'bg-gray-400'} text-white flex items-center justify-center ring-2 ring-white text-xs font-semibold hover:ring-blue-400 transition"
+                        title="${u.username}">
+                            ${u.username[0].toUpperCase()}  <!-- first letter shown in circle -->
+                        </a>
+                    `).join('');
+
+                    const row = `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            <a href="/repo/${repo.id}/" class="text-blue-600 hover:underline">
+                                ${repo.name}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${repo.commits}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${changes}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">${repo.merges}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm flex -space-x-2">${userHtml}</td>
+                    </tr>
+                `;
+                    tableBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+
+            // Create or update Chart.js line chart
+            function createOrUpdateChart(labels = [], dataPoints = []) {
+                const ctx = document.getElementById('repoCountChart').getContext('2d');
+                if (repoCountChart) {
+                    repoCountChart.data.labels = labels;
+                    repoCountChart.data.datasets[0].data = dataPoints;
+                    repoCountChart.update();
+                } else {
+                    repoCountChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Repos',
+                                data: dataPoints,
+                                borderColor: '#3b82f6',
+                                backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                tension: 0.25,
+                                fill: true,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: { beginAtZero: true },
+                                x: { title: { display: true, text: 'Period' } }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                }
+            }
+            function createOrUpdateRepoGrowthChart(labels = [], dataPoints = [], minY = 0, maxY = null) {
+            const ctx = document.getElementById('repoGrowthChart').getContext('2d');
+
+            if (repoGrowthChart) {
+                repoGrowthChart.data.labels = labels;
+                repoGrowthChart.data.datasets[0].data = dataPoints;
+                repoGrowthChart.options.scales.y.min = minY;
+                if (maxY) repoGrowthChart.options.scales.y.max = maxY;
+                repoGrowthChart.update();
+            } else {
+                repoGrowthChart = new Chart(ctx, {
+                        type: 'line', // Step chart
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Total Repositories',
+                            data: dataPoints,
+                            borderColor: '#3b82f6',
+                            borderWidth: 1.5,
+                            stepped: true,
+                            tension: 0,
+                            fill: 'origin',
+                            backgroundColor: 'rgba(59,130,246,0.15)',
+                            pointRadius: 2,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderWidth: 0,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: minY,
+                                max: maxY,
+                                title: {
+                                    display: true,
+                                    text: 'Total Repo Count',
+                                },
+                                ticks: { precision: 0 },
+                                grid: { color: '#e5e7eb' }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date',
+                                },
+                                grid: { color: '#f3f4f6' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                }
+                        },
+                            interaction: {
+                                mode: 'nearest',
+                                intersect: false
+                            }
+                    }
+                });
+            }
+        }
+
+            // Initial active period UI
+            setActivePeriod('day');
+
+            // Initial fetch + render
+            const initialData = await fetchProjectMetrics(startDateInput.value, endDateInput.value, currentPeriod);
+            if (initialData) {
+                renderSummaryCards(initialData);
+                renderTable(initialData);
+                createOrUpdateChart(initialData.time_series?.labels || [], initialData.time_series?.data || []);
+                createOrUpdateRepoGrowthChart(initialData.repo_growth?.labels || [],initialData.repo_growth?.data || [],initialData.repo_growth?.min_y || 0,initialData.repo_growth?.max_y || null);
+            }
+
+            //  filter buttons
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const period = btn.dataset.period;
+                    setActivePeriod(period);
+                    const data = await fetchProjectMetrics(startDateInput.value, endDateInput.value, period);
+                    if (data) {
+                        renderSummaryCards(data);
+                        renderTable(data);
+                        createOrUpdateChart(data.time_series?.labels || [], data.time_series?.data || []);
+                        createOrUpdateRepoGrowthChart(data.repo_growth?.labels || [],data.repo_growth?.data || [],data.repo_growth?.min_y || 0,data.repo_growth?.max_y || null);
+                    }
+                });
+            });
+
+            // Datedate inputs to refetch using currentPeriod
+            [startDateInput, endDateInput].forEach(input => {
+                input.addEventListener('change', async () => {
+                    const startDate = startDateInput.value;
+                    const endDate = endDateInput.value;
+
+                    const newData = await fetchProjectMetrics(startDate, endDate, currentPeriod);
+                    if (newData) {
+                        renderSummaryCards(newData);
+                        renderTable(newData);
+                        createOrUpdateChart(newData.time_series?.labels || [], newData.time_series?.data || []);
+                        createOrUpdateRepoGrowthChart(newData.repo_growth?.labels || [],newData.repo_growth?.data || [],newData.repo_growth?.min_y || 0,newData.repo_growth?.max_y || null);
+                    }
+                });
+            });
+
+        });
+    </script>
+
+
+</body>
+
+</html>

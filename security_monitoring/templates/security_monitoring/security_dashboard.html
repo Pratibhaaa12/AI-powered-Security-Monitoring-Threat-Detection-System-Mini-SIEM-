@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Security Dashboard</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 18px; }
+      h1 { margin-bottom: 8px; }
+      .grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+      @media (min-width: 1100px) { .grid { grid-template-columns: 1fr 1fr; } }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 12px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+      th { background: #fafafa; }
+      .meta { color: #666; font-size: 12px; }
+      .muted { color: #666; }
+      ul { margin: 8px 0 0 18px; }
+    </style>
+  </head>
+  <body>
+    <h1>Security Dashboard</h1>
+    <div class="meta">
+      Lookback: <b>{{ lookback_hours }}</b> hours • Rule types: <span class="muted">{{ security_rule_types|join:", " }}</span>
+    </div>
+    <div style="height: 10px;"></div>
+    <div class="grid">
+      <div class="card">
+        <h2>Failed Logins</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>Attempted</th>
+              <th>IP</th>
+              <th>Country</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if failed_login_logs %}
+              {% for e in failed_login_logs %}
+                <tr>
+                  <td>{{ e.time }}</td>
+                  <td>{{ e.user }}</td>
+                  <td>{{ e.attempted_username }}</td>
+                  <td>{{ e.ip }}</td>
+                  <td>{{ e.country_code }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="5" class="muted">No events found.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Suspicious Login Attempts</h2>
+        <div class="meta">Heuristic using active `brute_force_detection` threshold.</div>
+        <table>
+          <thead>
+            <tr>
+              <th>User/Attempted</th>
+              <th>IP</th>
+              <th>Attempts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if suspicious_failed %}
+              {% for r in suspicious_failed %}
+                <tr>
+                  <td>{{ r.user_label }}</td>
+                  <td>{{ r.ip_address }}</td>
+                  <td>{{ r.attempts }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="3" class="muted">No suspicious patterns detected.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <div style="height: 12px;"></div>
+        <h3 style="margin: 0 0 8px 0;">New/Changed Login IPs</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>IP</th>
+              <th>Prev Country</th>
+              <th>Now Country</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if suspicious_ip_logs %}
+              {% for e in suspicious_ip_logs %}
+                <tr>
+                  <td>{{ e.occurred_at|date:"Y-m-d H:i:s" }}</td>
+                  <td>{{ e.user.username }}</td>
+                  <td>{{ e.ip_address }}</td>
+                  <td>{{ e.metadata.previous_country_code }}</td>
+                  <td>{{ e.metadata.current_country_code }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="5" class="muted">No suspicious IP changes in lookback window.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Unauthorized API Activity</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>IP</th>
+              <th>Path</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if api_unauthorized_logs %}
+              {% for e in api_unauthorized_logs %}
+                <tr>
+                  <td>{{ e.occurred_at|date:"Y-m-d H:i:s" }}</td>
+                  <td>{{ e.ip_address }}</td>
+                  <td>{{ e.request_path }}</td>
+                  <td>{{ e.status_code }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="4" class="muted">No unauthorized events in lookback window.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Rate Limit / Abuse Signals</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>IP</th>
+              <th>Path</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if rate_limited_logs %}
+              {% for e in rate_limited_logs %}
+                <tr>
+                  <td>{{ e.occurred_at|date:"Y-m-d H:i:s" }}</td>
+                  <td>{{ e.ip_address }}</td>
+                  <td>{{ e.request_path }}</td>
+                  <td>{{ e.status_code }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="4" class="muted">No rate-limit events found.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Commit Spike Anomalies</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Commits (window)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if suspicious_commit_activity %}
+              {% for a in suspicious_commit_activity %}
+                <tr>
+                  <td>{{ a.username }}</td>
+                  <td>{{ a.commit_count }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="2" class="muted">No commit spikes detected.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Latest Security Alerts</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Rule</th>
+              <th>Title</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if alerts_triggered %}
+              {% for e in alerts_triggered %}
+                <tr>
+                  <td>{{ e.created_at|date:"Y-m-d H:i:s" }}</td>
+                  <td>{{ e.rule.rule_type }}</td>
+                  <td>{{ e.title }}</td>
+                  <td>{{ e.status }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="4" class="muted">No security alerts triggered yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>
+

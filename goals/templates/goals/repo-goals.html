@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  {% load static %}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repository Goals</title>
+  <link rel="icon" type="image/png" href="{% static 'fav-icon.png' %}?v=5">
+
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.9.0/dist/full.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      background: linear-gradient(145deg, #eef2f7, #dfe7ef);
+      min-height: 100vh;
+    }
+
+    .repo-card {
+      background: white;
+      padding: 22px 26px;
+      margin-bottom: 20px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      transition: all .25s ease;
+    }
+
+    .repo-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    }
+
+    .goal-badge {
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 10px;
+      white-space: normal;
+      display: block;
+      max-width: 100%;
+      line-height: 1.4rem;
+    }
+
+    .goal-present {
+      background: #6cb36c;
+      color: white;
+    }
+
+    .goal-none {
+      background: #3b82f6;
+      color: white;
+      text-align: center;
+    }
+
+    .goal-tag {
+      background: #ede9fe;
+      color: #5b21b6;
+      padding: 3px 10px;
+      font-size: 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-block;
+      margin-top: 3px;
+    }
+
+    /* FIX LEFT + RIGHT exact spacing */
+    .repo-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    @media(min-width: 768px) {
+      .repo-layout {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .repo-left {
+        width: 35%;
+        min-width: 280px;
+      }
+      .repo-right {
+        width: 60%;
+      }
+    }
+  </style>
+</head>
+
+<body class="text-base-content">
+
+  <!-- NAVBAR -->
+  <div class="navbar bg-white/90 backdrop-blur shadow-sm border-b border-primary/20 px-4">
+      <div class="flex-1 flex items-center gap-3">
+
+    <img src="{% static '011bq_logo_icon.png' %}?v=5" alt="Logo"
+         class="h-7 w-auto object-contain" />
+      <a class="btn btn-ghost text-xl font-bold">Reward Dashboard</a>
+      <a href="{% url 'home' %}" class="btn btn-ghost text-base">Home</a>
+      <a href="{% url 'leaderboard' %}" class="btn btn-ghost text-base">Leaderboard</a>
+      <a href="{% url 'bug-dashboard' %}" class="btn btn-ghost text-base">Bug Counter</a>
+      <a href="{% url 'daily_report' %}" class="btn btn-ghost text-base">Daily Report</a>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <span class="text-sm font-medium">{{ user.username }}</span>
+      <a href="{% url 'profile' %}">
+        <img src="https://ui-avatars.com/api/?name={{ user.username }}&background=random&size=40"
+          class="w-10 h-10 rounded-full ring-2 ring-primary hover:ring-4 transition duration-200" />
+      </a>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="max-w-5xl mx-auto mt-12 px-4 mb-20">
+
+    <h1 class="text-3xl font-extrabold mb-10 text-center text-gray-800 tracking-tight">
+      Repository Goals <span class="text-primary">(6 Months)</span>
+    </h1>
+
+    {% for repo in repos %}
+    <div class="repo-card">
+
+      <div class="repo-layout">
+        <div class="repo-left">
+          <a href="{% url 'goal_repo_detail' repo.id %}"
+            class="text-xl font-bold text-gray-900 hover:underline block">
+            {{ repo.org_name }} / {{ repo.repo_name }}
+          </a>
+
+          {% if repo.goal %}
+          <span class="goal-tag">Goal Assigned</span>
+          {% endif %}
+        </div>
+
+        <div class="repo-right">
+          {% if repo.goal %}
+          <span class="goal-badge goal-present">
+            {{ repo.goal }}
+          </span>
+          {% else %}
+          <span class="goal-badge goal-none">
+            No Goal Added
+          </span>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+
+  </div>
+
+</body>
+</html>
