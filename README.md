@@ -81,6 +81,6 @@ These simulations validate the effectiveness of detection and alert mechanisms.
 
 ### Setup Instruction
 
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+- pip install -r requirements.txt
+- python manage.py migrate
+- python manage.py runserver
